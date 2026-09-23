@@ -42,7 +42,11 @@ Filer: `mu26_befolkning.rds` (for R) og `mu26_befolkning.csv`.
 
 ## Eksperiment: KI som kilde
 
-Respondentene ble tilfeldig fordelt på fem versjoner av et spørsmål om hvorvidt et bilde er ekte. Versjonene var like, bortsett fra hvilken kilde som ble oppgitt. *(Legg inn eksakt ordlyd fra spørreskjemaet her.)*
+Respondentene ble tilfeldig fordelt på fem versjoner av følgende scenario, der bare kilden (KILDE) varierte:
+
+> «En venn du vanligvis stoler på har delt et viralt bilde i sosiale medier som angivelig viser en kjent offentlig person begå en kriminell handling. Vennen har undersøkt om bildet er ekte ved å spørre (KILDE), som svarte at det fremstår som ekte og ikke manipulert.»
+
+Kilden var enten en forsker på desinformasjon, OpenAIs KI-tjeneste ChatGPT, Googles KI-tjeneste Gemini, VGs KI-tjeneste heiVG eller Elon Musks KI-tjeneste Grok.
 
 | Variabel | Beskrivelse | Verdier |
 |---|---|---|
