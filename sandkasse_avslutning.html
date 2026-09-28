@@ -10,9 +10,10 @@
   .status { font-size: .9rem; margin: 0 0 8px; padding: 6px 10px; border-radius: 4px; background: #fff6d6; color: #6b5300; }
   .status.ready { background: #e6f4ea; color: #1e5b2e; }
   .status.error { background: #fde8e8; color: #8a1c1c; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 8px; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .hidden { display: none !important; }
   @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
-  .pane { border: 1px solid #cfcfcf; border-radius: 4px; display: flex; flex-direction: column; min-height: 170px; overflow: hidden; background: #fff; }
+  .pane { border: 1px solid #cfcfcf; border-radius: 4px; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
   .bar { display: flex; align-items: center; gap: 8px; background: #eef1f5; border-bottom: 1px solid #cfcfcf; padding: 4px 8px; font-size: .85rem; }
   .bar .name { font-weight: 600; }
   .bar .num { display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 50%; color: #fff; font-size: .75rem; font-weight: 700; }
@@ -21,8 +22,8 @@
   .bar button:hover:not(:disabled) { background: #f3f5f8; }
   .bar button:disabled { opacity: .5; cursor: default; }
   .bar button.run { color: #1a7f37; font-weight: 600; }
-  textarea { flex: 1; width: 100%; border: 0; resize: vertical; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 14px; line-height: 1.5; outline: none; min-height: 170px; }
-  .console { flex: 1; margin: 0; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; overflow-x: hidden; max-height: 300px; }
+  textarea { flex: none; width: 100%; border: 0; resize: vertical; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 14px; line-height: 1.5; outline: none; height: 205px; min-height: 0; }
+  .console { flex: none; margin: 0; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 13px; line-height: 1.45; white-space: pre; overflow: auto; height: 300px; }
   .console .in { color: #1f4e9c; }
   .console .err { color: #b3261e; }
   .console .msg { color: #8a5a00; }
@@ -49,7 +50,7 @@
     </div>
     <textarea id="code" spellcheck="false" aria-label="Skript"></textarea>
   </div>
-  <div class="pane">
+  <div class="pane hidden">
     <div class="bar"><span class="num" style="background:#e07b28">2</span><span class="name">Environment</span></div>
     <div class="env" id="env"><div class="empty">Environment is empty</div></div>
   </div>
@@ -59,7 +60,7 @@
     </div>
     <pre class="console" id="console" aria-live="polite"></pre>
   </div>
-  <div class="pane">
+  <div class="pane hidden">
     <div class="bar"><span class="num" style="background:#3f8f3f">4</span><span class="name">Plots</span></div>
     <div class="plots" id="plots"><div class="empty">Figurer du lager, dukker opp her.</div></div>
   </div>
@@ -94,14 +95,13 @@ head(d)
 mean(d$tillit_nyheter)
 `;
 
-const START_FULL = `# Datasettet d og pakkene parameters og dplyr er allerede lastet inn.
-# Trykk «Kjør alt» og se etter svaret i Console.
+const START_FULL = `# Datasettet d og pakkene er allerede lastet inn. Trykk «Kjør alt».
 
 # Lag en tallvariabel for alder
 d <- d %>%
   mutate(alder = as.integer(aldersgruppe))
 
-# Kjør modellen og se på resultatet
+# Kjør modellen og se på resultatet i Console
 m4 <- lm(ki_konsekvenser ~ alder + ki_bruk + venstre_hoyre + tillit_nyheter, data = d)
 model_parameters(m4)
 `;
