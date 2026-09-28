@@ -79,11 +79,12 @@ const START = `# ============================================
 
 # ---- Last inn pakker og data ----
 # I RStudio må du installere pakkene første gang (fjern # foran linjen og kjør den):
-# install.packages(c("parameters", "performance", "ggplot2"))
+# install.packages(c("parameters", "performance", "ggplot2", "dplyr"))
 
 library(parameters)
 library(performance)
 library(ggplot2)
+library(dplyr)
 
 d <- readRDS(url("https://raw.githubusercontent.com/Erknud/Metodekurs/main/mu26_befolkning.rds"))
 head(d)
@@ -119,7 +120,8 @@ ggplot(d, aes(x = ki_bruk, y = ki_konsekvenser)) +
   geom_hline(yintercept = 3, linetype = "dashed")
 
 # ---- Multivariat regresjon ----
-d$alder <- as.integer(d$aldersgruppe)
+d <- d %>%
+  mutate(alder = as.integer(aldersgruppe))
 
 m1 <- lm(ki_konsekvenser ~ alder, data = d)
 m2 <- lm(ki_konsekvenser ~ alder + ki_bruk, data = d)
@@ -131,17 +133,23 @@ m6 <- lm(ki_konsekvenser ~ alder + ki_bruk + venstre_hoyre +
 model_parameters(m6, summary = TRUE)
 
 # ---- Multivariat regresjon i en figur (koeffisientplott) ----
-koef <- model_parameters(m6)
-koef <- koef[koef$Parameter != "(Intercept)", ]
+m3 <- lm(ki_konsekvenser ~ alder + ki_bruk + venstre_hoyre, data = d)
 
-# Gi variablene forståelige navn (i samme rekkefølge som i modellen)
-navn <- c("Alder", "KI-bruk", "Venstre–høyre", "Kvinne",
-          "Utdanning 1-4 år", "Utdanning 5+ år")
-koef$Parameter <- factor(navn, levels = rev(navn))
+koef <- data.frame(
+  variabel = names(coef(m3)),
+  estimat  = coef(m3),
+  nedre    = confint(m3)[, 1],
+  ovre     = confint(m3)[, 2]
+)
+navn <- c("Alder", "KI-bruk", "Venstre–høyre")
 
-ggplot(koef, aes(x = Coefficient, y = Parameter)) +
+koef <- koef %>%
+  filter(variabel != "(Intercept)") %>%
+  mutate(variabel = factor(navn, levels = rev(navn)))
+
+ggplot(koef, aes(x = estimat, y = variabel)) +
   geom_vline(xintercept = 0, linetype = "dashed") +
-  geom_pointrange(aes(xmin = CI_low, xmax = CI_high)) +
+  geom_pointrange(aes(xmin = nedre, xmax = ovre)) +
   labs(x = "Effekt på syn på konsekvenser av KI (95 % konfidensintervall)",
        y = NULL)
 `;
