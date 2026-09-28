@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regresjonslinjen med glidebryter</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 8px 12px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #222; background: #fff; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  svg { width: 100%; height: auto; display: block; }
+  .ctrl { display: flex; align-items: center; gap: 12px; margin: 4px 0 6px; font-size: .95rem; }
+  .ctrl label { white-space: nowrap; }
+  .ctrl input { flex: 1; accent-color: #2c5fa8; }
+  .readout { background: #f5f7fa; border-left: 4px solid #2c5fa8; padding: 6px 12px; font-size: .95rem; line-height: 1.45; }
+  .eq { font-family: Consolas, Monaco, monospace; font-size: .9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <svg id="plot" viewBox="0 0 700 290" role="img" aria-label="Regresjonslinje for syn på konsekvenser av KI etter KI-bruk"></svg>
+  <div class="ctrl">
+    <label for="x">KI-bruk:</label>
+    <input type="range" id="x" min="0" max="5" step="1" value="0">
+    <b id="xlab" style="min-width: 11em; text-align: right;"></b>
+  </div>
+  <div class="readout" id="readout" aria-live="polite"></div>
+</div>
+<script>
+// Koeffisienter fra lm(ki_konsekvenser ~ ki_bruk, data = d)
+const A = 2.451893, B = 0.243343;
+const xLabels = ["Aldri","Sjeldnere enn månedlig","Noen ganger i måneden","Ukentlig","Daglig","Flere ganger daglig"];
+const xTick = [["Aldri"],["Sjeldnere","enn månedlig"],["Noen ganger","i måneden"],["Ukentlig"],["Daglig"],["Flere ganger","daglig"]];
+const yLabels = ["Svært negative","Ganske negative","Verken eller","Ganske positive","Svært positive"];
+const M = {l: 150, r: 55, t: 12, b: 50}, W = 700, H = 290;
+const px = x => M.l + x / 5 * (W - M.l - M.r);
+const py = y => H - M.b - (y - 1) / 4 * (H - M.t - M.b);
+const fmt = (v, d = 2) => v.toFixed(d).replace(".", ",");
+const NS = "http://www.w3.org/2000/svg", svg = document.getElementById("plot");
+function el(tag, a, parent = svg) { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); parent.appendChild(e); return e; }
+
+el("rect", {x: M.l, y: M.t, width: W - M.l - M.r, height: H - M.t - M.b, fill: "#f7f7f7"});
+for (let y = 1; y <= 5; y++) {
+  el("line", {x1: M.l, x2: W - M.r, y1: py(y), y2: py(y), stroke: "#e2e2e2"});
+  el("text", {x: M.l - 8, y: py(y) + 4, "text-anchor": "end", "font-size": 12.5, fill: "#555"}).textContent = y + " " + yLabels[y - 1];
+}
+for (let x = 0; x <= 5; x++) {
+  el("line", {x1: px(x), x2: px(x), y1: M.t, y2: H - M.b, stroke: "#e2e2e2"});
+  xTick[x].forEach((s, i) => { el("text", {x: px(x), y: H - M.b + 16 + i * 14, "text-anchor": "middle", "font-size": 12, fill: "#555"}).textContent = s; });
+}
+el("line", {x1: M.l, x2: W - M.r, y1: py(3), y2: py(3), stroke: "#888", "stroke-dasharray": "5 4"});
+el("line", {x1: px(0), y1: py(A), x2: px(5), y2: py(A + 5 * B), stroke: "#3366ff", "stroke-width": 3.5});
+const vG = el("line", {stroke: "#2c5fa8", "stroke-width": 1.5, "stroke-dasharray": "3 3"});
+const hG = el("line", {stroke: "#2c5fa8", "stroke-width": 1.5, "stroke-dasharray": "3 3"});
+const dot = el("circle", {r: 7, fill: "#2c5fa8", stroke: "#fff", "stroke-width": 2});
+const val = el("text", {"font-size": 15, "font-weight": 700, fill: "#222", "text-anchor": "middle"});
+
+function describe(y) {
+  if (y < 2.9) return "mellom «ganske negative» og «verken eller»";
+  if (y <= 3.1) return "omtrent på «verken eller»";
+  return "mellom «verken eller» og «ganske positive»";
+}
+const xs = document.getElementById("x");
+function update() {
+  const x = +xs.value, y = A + B * x;
+  vG.setAttribute("x1", px(x)); vG.setAttribute("x2", px(x)); vG.setAttribute("y1", H - M.b); vG.setAttribute("y2", py(y));
+  hG.setAttribute("x1", M.l); hG.setAttribute("x2", px(x)); hG.setAttribute("y1", py(y)); hG.setAttribute("y2", py(y));
+  dot.setAttribute("cx", px(x)); dot.setAttribute("cy", py(y));
+  val.textContent = fmt(y); val.setAttribute("x", px(x)); val.setAttribute("y", py(y) - 14);
+  document.getElementById("xlab").textContent = xLabels[x] + " (" + x + ")";
+  document.getElementById("readout").innerHTML =
+    `<span class="eq">forventet syn = ${fmt(A, 3)} + ${fmt(B, 3)} × ${x} = <b>${fmt(y)}</b></span><br>` +
+    `De som bruker KI <b>${xLabels[x].toLowerCase()}</b>, ligger i gjennomsnitt ${describe(y)}.`;
+}
+xs.addEventListener("input", update);
+update();
+</script>
+</body>
+</html>
