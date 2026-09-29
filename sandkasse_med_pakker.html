@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>R-sandkasse</title>
+<title>R-sandkasse med pakker</title>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; padding: 12px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #222; background: #fff; }
@@ -22,7 +22,7 @@
   .bar button:disabled { opacity: .5; cursor: default; }
   .bar button.run { color: #1a7f37; font-weight: 600; }
   textarea { flex: 1; width: 100%; border: 0; resize: vertical; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 14px; line-height: 1.5; outline: none; min-height: 230px; }
-  .console { flex: 1; margin: 0; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-y: auto; max-height: 300px; }
+  .console { flex: 1; margin: 0; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; overflow-x: hidden; max-height: 300px; }
   .console .in { color: #1f4e9c; }
   .console .err { color: #b3261e; }
   .console .msg { color: #8a5a00; }
@@ -69,8 +69,9 @@
 const params = new URLSearchParams(location.search);
 const WEBR_BASE = params.get("webr") || "https://webr.r-wasm.org/latest/";
 const DATA_URL = params.get("dataurl") || "https://raw.githubusercontent.com/Erknud/Metodekurs/main/mu26_befolkning.rds";
-const LOAD_DATA = params.get("data") === "1";
-const PKGS = (params.get("pakker") || "").split(",").map(x => x.trim()).filter(Boolean);
+// Denne versjonen laster inn datasettet og pakkene automatisk
+const LOAD_DATA = params.get("data") !== "0";
+const PKGS = (params.get("pakker") || "ggplot2,parameters,performance").split(",").map(x => x.trim()).filter(Boolean);
 
 const START = `# Mitt første R-skript
 

@@ -22,7 +22,7 @@
   .bar button:disabled { opacity: .5; cursor: default; }
   .bar button.run { color: #1a7f37; font-weight: 600; }
   textarea { flex: 1; width: 100%; border: 0; resize: vertical; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 14px; line-height: 1.5; outline: none; min-height: 230px; }
-  .console { flex: 1; margin: 0; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-y: auto; max-height: 300px; }
+  .console { flex: 1; margin: 0; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; overflow-x: hidden; max-height: 300px; }
   .console .in { color: #1f4e9c; }
   .console .err { color: #b3261e; }
   .console .msg { color: #8a5a00; }
@@ -70,6 +70,7 @@ const params = new URLSearchParams(location.search);
 const WEBR_BASE = params.get("webr") || "https://webr.r-wasm.org/latest/";
 const DATA_URL = params.get("dataurl") || "https://raw.githubusercontent.com/Erknud/Metodekurs/main/mu26_befolkning.rds";
 const LOAD_DATA = params.get("data") === "1";
+const PKGS = (params.get("pakker") || "").split(",").map(x => x.trim()).filter(Boolean);
 
 const START = `# Mitt første R-skript
 
@@ -91,9 +92,20 @@ head(d)
 mean(d$tillit_nyheter)
 `;
 
+const START_FULL = `# Datasettet d og pakkene er lastet inn
+
+# Regresjon
+modell <- lm(ki_konsekvenser ~ ki_bruk, data = d)
+model_parameters(modell)
+
+# Figur (hele koden kjøres når markøren står på første linje)
+ggplot(d, aes(x = ki_bruk, y = ki_konsekvenser)) +
+  geom_smooth(method = "lm")
+`;
+
 const $ = id => document.getElementById(id);
 const code = $("code"), out = $("console"), statusEl = $("status"), runBtn = $("run");
-const startText = LOAD_DATA ? START_DATA : START;
+const startText = (LOAD_DATA && PKGS.length) ? START_FULL : LOAD_DATA ? START_DATA : START;
 code.value = startText;
 
 function write(text, cls) {
@@ -193,6 +205,23 @@ async function runCode(src) {
   }
 }
 
+function continues(line) {
+  // linjen fortsetter på neste linje hvis den slutter med en operator eller komma
+  const t = line.replace(/#.*$/, "").trim();
+  return /(\+|-|\*|\/|,|\(|\||&|=|<-|%>%|\|>)$/.test(t);
+}
+function depth(str) {
+  let d = 0, q = null;
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    if (q) { if (c === "\\") i++; else if (c === q) q = null; continue; }
+    if (c === '"' || c === "'") q = c;
+    else if (c === "#") { const nl = str.indexOf("\n", i); if (nl === -1) break; i = nl; }
+    else if ("([{".includes(c)) d++;
+    else if (")]}".includes(c)) d--;
+  }
+  return d;
+}
 function runCurrent() {
   const text = code.value;
   let start = code.selectionStart, end = code.selectionEnd, src;
@@ -201,8 +230,17 @@ function runCurrent() {
   } else {
     const ls = text.lastIndexOf("\n", start - 1) + 1;
     let le = text.indexOf("\n", start); if (le === -1) le = text.length;
+    // utvid til hele uttrykket hvis det går over flere linjer (slik som i RStudio)
+    while (le < text.length) {
+      const chunk = text.slice(ls, le);
+      const lastLine = chunk.slice(chunk.lastIndexOf("\n") + 1);
+      if (depth(chunk) > 0 || continues(lastLine)) {
+        let ne = text.indexOf("\n", le + 1); if (ne === -1) ne = text.length;
+        le = ne;
+      } else break;
+    }
     src = text.slice(ls, le);
-    // flytt markøren til neste linje som ikke er tom, slik som i RStudio
+    // flytt markøren til neste linje som ikke er tom
     let next = le + 1;
     while (next < text.length) {
       let ne = text.indexOf("\n", next); if (ne === -1) ne = text.length;
@@ -213,7 +251,7 @@ function runCurrent() {
     code.setSelectionRange(pos, pos);
   }
   const trimmed = src.trim();
-  if (trimmed === "" ) return;
+  if (trimmed === "") return;
   if (trimmed.split("\n").every(l => l.trim() === "" || l.trim().startsWith("#"))) {
     write("> " + trimmed.replace(/\n/g, "\n> "), "in");
     return;
@@ -236,6 +274,13 @@ $("reset").addEventListener("click", () => { code.value = startText; code.focus(
     await webR.init();
     shelter = await new webR.Shelter();
     await webR.evalRVoid(HELPER);
+    // gjør at install.packages() og library() fungerer som i vanlig R
+    try { await webR.evalRVoid("webr::shim_install()"); } catch (e) { console.warn(e); }
+    if (PKGS.length) {
+      setStatus("Installerer pakkene " + PKGS.join(", ") + " … Dette kan ta opptil et minutt første gang.");
+      await webR.installPackages(PKGS, { quiet: true });
+      for (const p of PKGS) await webR.evalRVoid(`suppressPackageStartupMessages(library(${p}))`);
+    }
     if (LOAD_DATA) {
       setStatus("Laster inn datasettet …");
       const buf = new Uint8Array(await (await fetch(DATA_URL)).arrayBuffer());
