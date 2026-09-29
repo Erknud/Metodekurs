@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Utforsk datasettet</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 10px 12px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #222; background: #fff; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .groups { display: grid; gap: 6px; margin-bottom: 12px; }
+  .group { display: grid; grid-template-columns: 84px 1fr; align-items: start; gap: 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .glabel { font-size: .8rem; color: #666; padding-top: 6px; }
+  .chip { font: inherit; font-family: Consolas, Monaco, monospace; font-size: .82rem; padding: 4px 9px; border: 1px solid #c3cad6; background: #fff; color: #1f3f73; border-radius: 14px; cursor: pointer; }
+  .chip:hover { background: #f0f4fa; }
+  .chip[aria-pressed="true"] { background: #2c5fa8; border-color: #2c5fa8; color: #fff; }
+  .card { border: 1px solid #d9dee6; border-radius: 6px; padding: 12px 14px; }
+  .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+  .vname { font-family: Consolas, Monaco, monospace; font-size: 1.1rem; font-weight: 700; }
+  .badge { font-size: .78rem; padding: 2px 8px; border-radius: 10px; background: #eef1f5; color: #444; }
+  .q { margin: 8px 0 4px; font-size: .98rem; line-height: 1.45; }
+  .note { margin: 4px 0; font-size: .88rem; color: #555; line-height: 1.4; }
+  .stats { font-size: .88rem; color: #444; margin: 6px 0 10px; }
+  .stats b { color: #222; }
+  .chart { min-height: 250px; display: flex; flex-direction: column; justify-content: flex-start; gap: 4px; }
+  .row { display: grid; grid-template-columns: minmax(90px, 36%) 1fr; align-items: center; gap: 8px; font-size: .86rem; }
+  .row .lab { text-align: right; color: #333; line-height: 1.2; }
+  .row .lab .num { font-family: Consolas, Monaco, monospace; color: #666; margin-right: 4px; }
+  .track { position: relative; height: 18px; }
+  .bar { height: 100%; background: #2c5fa8; border-radius: 0 4px 4px 0; min-width: 2px; }
+  .row:hover .bar { background: #1f4a88; }
+  .val { position: absolute; top: 0; line-height: 18px; font-size: .8rem; color: #333; white-space: nowrap; padding-left: 6px; }
+  .code { margin-top: 12px; font-size: .88rem; color: #444; }
+  pre { margin: 4px 0 0; background: #f5f5f5; border: 1px solid #ddd; border-left: 4px solid #2c7be5; border-radius: 4px; padding: 8px 10px; font-family: Consolas, Monaco, monospace; font-size: 13px; line-height: 1.5; overflow-x: auto; }
+@media (max-width: 560px) { .group { grid-template-columns: 1fr; gap: 3px; } .glabel { padding-top: 4px; } .row { grid-template-columns: 1fr; gap: 1px; margin-bottom: 4px; } .row .lab { text-align: left; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="groups" id="groups"></div>
+  <div class="card" aria-live="polite">
+    <div class="head"><span class="vname" id="vname"></span><span class="badge" id="badge"></span></div>
+    <p class="q" id="q"></p>
+    <p class="note" id="note"></p>
+    <div class="stats" id="stats"></div>
+    <div class="chart" id="chart" role="img"></div>
+    <div class="code">Slik får du den samme oversikten i R:<pre id="code"></pre></div>
+  </div>
+</div>
+<script>
+const DATA = {"kjonn":{"klasse":"factor","verdier":["Mann","Kvinne"],"antall":[524,537],"mangler":0,"snitt":{}},"aldersgruppe":{"klasse":"factor","verdier":["18-24","25-34","35-44","45-54","55-64","65+"],"antall":[27,222,176,199,168,269],"mangler":0,"snitt":{}},"landsdel":{"klasse":"factor","verdier":["Oslo og Akershus","Sør-Østlandet","Agder og Rogaland","Vestlandet","Trøndelag","Nord-Norge"],"antall":[303,255,147,180,87,89],"mangler":0,"snitt":{}},"utdanning":{"klasse":"factor","verdier":["Grunnskole/videregående","Universitet/høyskole 1-4 år","Universitet/høyskole 5+ år"],"antall":[271,433,352],"mangler":5,"snitt":{}},"venstre_hoyre":{"klasse":"integer","verdier":["0","1","2","3","4","5","6","7","8","9","10"],"antall":[33,50,114,126,105,170,80,127,107,37,33],"mangler":79,"snitt":4.9},"parti":{"klasse":"factor","verdier":["Arbeiderpartiet","Høyre","Fremskrittspartiet","SV","Senterpartiet","Rødt","MDG","KrF","Venstre","Annet parti"],"antall":[174,149,169,57,39,97,76,28,39,31],"mangler":202,"snitt":{}},"tillit_nyheter":{"klasse":"integer","verdier":["1","2","3","4"],"antall":[27,166,541,327],"mangler":0,"snitt":3.1},"unngar_nyheter":{"klasse":"factor","verdier":["Nei, aldri","Ja, men sjelden","Ja, noen ganger","Ja, store deler av tiden"],"antall":[451,224,289,84],"mangler":13,"snitt":{}},"ki_bruk":{"klasse":"integer","verdier":["0","1","2","3","4","5"],"antall":[229,147,164,258,144,100],"mangler":19,"snitt":2.23},"bruker_chatgpt":{"klasse":"integer","verdier":["0","1"],"antall":[485,557],"mangler":19,"snitt":0.53},"ki_konsekvenser":{"klasse":"integer","verdier":["1","2","3","4","5"],"antall":[84,252,258,342,42],"mangler":83,"snitt":3.01},"ki_eller_journalist":{"klasse":"integer","verdier":["1","2","3","4","5"],"antall":[219,259,163,287,106],"mangler":27,"snitt":2.81},"tillit_ki_redaksjoner":{"klasse":"integer","verdier":["1","2","3","4","5"],"antall":[113,230,423,211,26],"mangler":58,"snitt":2.81},"eksp_kilde":{"klasse":"factor","verdier":["Forsker","ChatGPT","Gemini","heiVG","Grok"],"antall":[190,199,241,222,209],"mangler":0,"snitt":{}},"tillit_bilde":{"klasse":"integer","verdier":["1","2","3","4","5"],"antall":[258,402,224,70,11],"mangler":96,"snitt":2.14}}
+;
+const META = {
+  kjonn: {g: "Bakgrunn", q: "Kjønn"},
+  aldersgruppe: {g: "Bakgrunn", q: "Alder i grupper"},
+  landsdel: {g: "Bakgrunn", q: "Landsdel"},
+  utdanning: {g: "Bakgrunn", q: "Høyeste fullførte utdanning"},
+  venstre_hoyre: {g: "Politikk", q: "Hvor vil du plassere deg selv på en skala fra venstre til høyre i politikken?",
+    lab: {0: "Helt til venstre", 5: "I midten", 10: "Helt til høyre"}},
+  parti: {g: "Politikk", q: "Dersom det var stortingsvalg i morgen, hvilket parti ville du da stemme på?",
+    note: "Blankt, ville ikke stemt og vet ikke er satt som manglende svar (NA)."},
+  tillit_nyheter: {g: "Nyheter", q: "I hvilken grad har du tiltro til nyhetsmediene generelt?",
+    lab: {1: "Ingen tiltro", 2: "Mindre tiltro", 3: "Noe tiltro", 4: "Stor tiltro"}},
+  unngar_nyheter: {g: "Nyheter", q: "Har du i løpet av det siste året aktivt forsøkt å unngå nyheter og/eller enkelte tema i nyhetene?"},
+  ki_bruk: {g: "KI", q: "Bruker du noen KI-verktøy i dag? Hvis ja, hvor ofte?",
+    lab: {0: "Aldri", 1: "Sjeldnere enn månedlig", 2: "Noen ganger i måneden", 3: "Ukentlig", 4: "Daglig", 5: "Flere ganger daglig"}},
+  bruker_chatgpt: {g: "KI", q: "Bruker du ChatGPT regelmessig?", lab: {0: "Nei", 1: "Ja"}, nosnitt: true},
+  ki_konsekvenser: {g: "KI", q: "Alt i alt, tror du utviklingen av KI vil ha positive eller negative konsekvenser for samfunnet de neste fem årene?",
+    lab: {1: "Svært negative", 2: "Ganske negative", 3: "Verken eller", 4: "Ganske positive", 5: "Svært positive"}},
+  ki_eller_journalist: {g: "KI", q: "«Så lenge informasjonen er korrekt, spiller det liten rolle for meg om en nyhetssak er skrevet av en journalist eller generert ved hjelp av KI»",
+    note: "Respondentene sa hvor enige de var i påstanden.",
+    lab: {1: "Helt uenig", 2: "Delvis uenig", 3: "Verken eller", 4: "Delvis enig", 5: "Helt enig"}},
+  tillit_ki_redaksjoner: {g: "KI", q: "I hvilken grad har du tillit til at norske redaksjoner som bruker KI i nyhetsformidling sikrer at informasjonen som publiseres er korrekt?",
+    lab: {1: "Ikke i det hele tatt", 2: "I ganske liten grad", 3: "I noen grad", 4: "I ganske stor grad", 5: "I svært stor grad"}},
+  eksp_kilde: {g: "Eksperiment", q: "Hvilken kilde respondenten fikk i sin versjon av scenarioet",
+    note: "Respondentene ble tilfeldig fordelt på fem versjoner av et scenario om et viralt bilde. Bare kilden som hadde sjekket bildet, varierte: en forsker på desinformasjon, ChatGPT, Gemini, heiVG (VGs KI-tjeneste) eller Grok."},
+  tillit_bilde: {g: "Eksperiment", q: "I hvor stor grad ville du hatt tillit til at bildet faktisk er ekte i et slikt tilfelle?",
+    note: "Svaret på scenarioet i eksperimentet. Se variabelen eksp_kilde for hvilken kilde respondenten fikk.",
+    lab: {1: "Ikke i det hele tatt", 2: "I ganske liten grad", 3: "I noen grad", 4: "I ganske stor grad", 5: "I svært stor grad"}}
+};
+const GROUPS = ["Bakgrunn", "Politikk", "Nyheter", "KI", "Eksperiment"];
+const $ = id => document.getElementById(id);
+const nf = (v, d = 0) => v.toFixed(d).replace(".", ",");
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+const gEl = $("groups");
+GROUPS.forEach(g => {
+  const div = document.createElement("div"); div.className = "group";
+  div.innerHTML = `<span class="glabel">${g}</span><div class="chips"></div>`;
+  const chips = div.querySelector(".chips");
+  Object.keys(META).filter(v => META[v].g === g).forEach(v => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = v; b.dataset.v = v;
+    b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", () => show(v));
+    chips.appendChild(b);
+  });
+  gEl.appendChild(div);
+});
+
+function show(v) {
+  const m = META[v], s = DATA[v];
+  document.querySelectorAll(".chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v ? "true" : "false"));
+  const numeric = s.klasse !== "factor";
+  $("vname").textContent = v;
+  $("badge").textContent = numeric ? "Tallvariabel" : "Kategorivariabel (faktor)";
+  $("q").textContent = m.q;
+  $("note").textContent = m.note || "";
+  $("note").style.display = m.note ? "" : "none";
+  const n = s.antall.reduce((a, b) => a + b, 0);
+  let st = `Svar: <b>${n}</b> &nbsp;·&nbsp; Mangler svar (NA): <b>${s.mangler}</b>`;
+  if (numeric && !m.nosnitt) st += ` &nbsp;·&nbsp; Gjennomsnitt: <b>${nf(s.snitt, 2)}</b>`;
+  $("stats").innerHTML = st;
+
+  const max = Math.max(...s.antall);
+  const rows = s.verdier.length;
+  const h = Math.min(26, Math.max(18, Math.floor(250 / rows) - 4));
+  const chart = $("chart"); chart.innerHTML = "";
+  chart.setAttribute("aria-label", "Fordeling av svar på " + v);
+  s.verdier.forEach((val, i) => {
+    const cnt = s.antall[i], pct = 100 * cnt / n;
+    const lab = numeric
+      ? `<span class="num">${esc(val)}</span>${m.lab && m.lab[val] ? esc(m.lab[val]) : ""}`
+      : esc(val);
+    const row = document.createElement("div"); row.className = "row";
+    row.title = `${numeric ? val + (m.lab && m.lab[val] ? " " + m.lab[val] : "") : val}: ${cnt} personer (${nf(pct)} %)`;
+    const w = 78 * cnt / max;
+    row.innerHTML = `<div class="lab">${lab}</div><div class="track" style="height:${h}px"><div class="bar" style="width:${w}%"></div><span class="val" style="left:${w}%;line-height:${h}px">${cnt} (${nf(pct)} %)</span></div>`;
+    chart.appendChild(row);
+  });
+
+  let code = `table(d$${v})`;
+  if (numeric && !m.nosnitt) code += `\nmean(d$${v}, na.rm = TRUE)`;
+  if (v === "bruker_chatgpt") code += `\n\n# Andelen som bruker ChatGPT (gjennomsnittet av 0 og 1):\nmean(d$${v}, na.rm = TRUE)`;
+  $("code").textContent = code;
+}
+
+const start = new URLSearchParams(location.search).get("var");
+show(META[start] ? start : "ki_konsekvenser");
+</script>
+</body>
+</html>
