@@ -59,7 +59,8 @@
     <pre class="console" id="console" aria-live="polite"></pre>
   </div>
   <div class="pane">
-    <div class="bar"><span class="num" style="background:#3f8f3f">4</span><span class="name">Plots</span></div>
+    <div class="bar"><span class="num" style="background:#3f8f3f">4</span><span class="name">Plots</span><span class="spacer"></span>
+      <button id="pprev" type="button" title="Forrige figur" style="display:none">&#9664;&#xFE0E;</button><span id="pcount" style="display:none; font-size:.8rem; color:#555; white-space:nowrap;"></span><button id="pnext" type="button" title="Neste figur" style="display:none">&#9654;&#xFE0E;</button></div>
     <div class="plots" id="plots"><div class="empty">Figurer du lager, dukker opp her.</div></div>
   </div>
 </div>
@@ -119,6 +120,16 @@ function write(text, cls) {
 function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = "status" + (cls ? " " + cls : ""); }
 
 let webR, shelter, busy = false, graphicsOK = true;
+const plots = [];
+function showPlot(i) {
+  if (!plots.length) return;
+  i = Math.max(0, Math.min(plots.length - 1, i));
+  const p = $("plots"); p.innerHTML = ""; p.appendChild(plots[i]); p.dataset.i = i;
+  const nav = plots.length > 1;
+  ["pprev", "pnext", "pcount"].forEach(id => $(id).style.display = nav ? "" : "none");
+  $("pcount").textContent = `${i + 1} av ${plots.length}`;
+  $("pprev").disabled = i === 0; $("pnext").disabled = i === plots.length - 1;
+}
 
 const HELPER = `
 .run_code <- function(code) {
@@ -191,11 +202,15 @@ async function runCode(src) {
       else write(o.data, /^(Error|Feil)/.test(o.data) ? "err" : "msg");
     }
     if (result.images && result.images.length) {
-      const img = result.images[result.images.length - 1];
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width; canvas.height = img.height;
-      canvas.getContext("2d").drawImage(img, 0, 0);
-      const p = $("plots"); p.innerHTML = ""; p.appendChild(canvas);
+      // ta vare på alle figurene, slik som Plots-vinduet i RStudio
+      for (const img of result.images) {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width; canvas.height = img.height;
+        canvas.getContext("2d").drawImage(img, 0, 0);
+        plots.push(canvas);
+      }
+      if (plots.length > 30) plots.splice(0, plots.length - 30);
+      showPlot(plots.length - 1);
     }
     await shelter.purge();
     await refreshEnv();
@@ -266,6 +281,8 @@ code.addEventListener("keydown", e => {
   if (e.key === "Tab") { e.preventDefault(); const s = code.selectionStart; code.setRangeText("  ", s, code.selectionEnd, "end"); }
 });
 $("clear").addEventListener("click", () => { out.textContent = ""; });
+$("pprev").addEventListener("click", () => showPlot(+$("plots").dataset.i - 1));
+$("pnext").addEventListener("click", () => showPlot(+$("plots").dataset.i + 1));
 $("reset").addEventListener("click", () => { code.value = startText; code.focus(); code.setSelectionRange(0, 0); });
 
 (async () => {
