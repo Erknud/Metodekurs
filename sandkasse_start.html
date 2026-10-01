@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R-sandkasse: mitt første skript</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 12px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #222; background: #fff; }
+  .status { font-size: .9rem; margin: 0 0 8px; padding: 6px 10px; border-radius: 4px; background: #fff6d6; color: #6b5300; }
+  .status.ready { background: #e6f4ea; color: #1e5b2e; }
+  .status.error { background: #fde8e8; color: #8a1c1c; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 8px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .pane { border: 1px solid #cfcfcf; border-radius: 4px; display: flex; flex-direction: column; min-height: 230px; overflow: hidden; background: #fff; }
+  .bar { display: flex; align-items: center; gap: 8px; background: #eef1f5; border-bottom: 1px solid #cfcfcf; padding: 4px 8px; font-size: .85rem; }
+  .bar .name { font-weight: 600; }
+  .bar .num { display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 50%; color: #fff; font-size: .75rem; font-weight: 700; }
+  .bar .spacer { flex: 1; }
+  .bar button { font: inherit; font-size: .82rem; padding: 3px 10px; border: 1px solid #b8bec8; background: #fff; border-radius: 3px; cursor: pointer; }
+  .bar button:hover:not(:disabled) { background: #f3f5f8; }
+  .bar button:disabled { opacity: .5; cursor: default; }
+  .bar button.run { color: #1a7f37; font-weight: 600; }
+  textarea { flex: 1; width: 100%; border: 0; resize: vertical; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 14px; line-height: 1.5; outline: none; min-height: 230px; }
+  .console { flex: 1; margin: 0; padding: 8px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; overflow-x: hidden; max-height: 300px; }
+  .console .in { color: #1f4e9c; }
+  .console .err { color: #b3261e; }
+  .console .msg { color: #8a5a00; }
+  .env { flex: 1; padding: 6px 10px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 13px; overflow-y: auto; }
+  .env table { border-collapse: collapse; width: 100%; }
+  .env td { padding: 3px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
+  .env td:first-child { font-weight: 600; white-space: nowrap; }
+  .empty { color: #888; font-family: system-ui, sans-serif; font-size: .9rem; padding: 10px 2px; }
+  .plots { flex: 1; display: flex; align-items: center; justify-content: center; padding: 6px; }
+  .plots canvas { max-width: 100%; height: auto; }
+  .tip { font-size: .85rem; color: #555; margin: 8px 0 0; }
+  kbd { font-family: inherit; background: #f1f1f1; border: 1px solid #ccc; border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; font-size: .8rem; }
+</style>
+</head>
+<body>
+<p class="status" id="status">Laster inn R … Dette tar noen sekunder første gang.</p>
+
+<div class="grid">
+  <div class="pane">
+    <div class="bar"><span class="num" style="background:#d62c2c">1</span><span class="name">Script</span><span class="spacer"></span>
+      <button id="reset" type="button" title="Sett skriptet tilbake til start">Tilbakestill</button>
+      <button id="run" class="run" type="button" disabled title="Kjør linjen markøren står på (Cmd/Ctrl + Enter)">&#9654; Run</button>
+    </div>
+    <textarea id="code" spellcheck="false" aria-label="Skript"></textarea>
+  </div>
+  <div class="pane">
+    <div class="bar"><span class="num" style="background:#e07b28">2</span><span class="name">Environment</span></div>
+    <div class="env" id="env"><div class="empty">Environment is empty</div></div>
+  </div>
+  <div class="pane">
+    <div class="bar"><span class="num" style="background:#1f6fb2">3</span><span class="name">Console</span><span class="spacer"></span>
+      <button id="clear" type="button" title="Tøm Console">Tøm</button>
+    </div>
+    <pre class="console" id="console" aria-live="polite"></pre>
+  </div>
+  <div class="pane">
+    <div class="bar"><span class="num" style="background:#3f8f3f">4</span><span class="name">Plots</span><span class="spacer"></span>
+      <button id="pprev" type="button" title="Forrige figur" style="display:none">&#9664;&#xFE0E;</button><span id="pcount" style="display:none; font-size:.8rem; color:#555; white-space:nowrap;"></span><button id="pnext" type="button" title="Neste figur" style="display:none">&#9654;&#xFE0E;</button></div>
+    <div class="plots" id="plots"><div class="empty">Figurer du lager, dukker opp her.</div></div>
+  </div>
+</div>
+<p class="tip">Sett markøren på en linje i Script og trykk <b>Run</b>, eller <kbd>Cmd</kbd> + <kbd>Enter</kbd> (Mac) / <kbd>Ctrl</kbd> + <kbd>Enter</kbd> (Windows). Marker flere linjer for å kjøre dem samtidig.</p>
+
+<script type="module">
+const params = new URLSearchParams(location.search);
+const WEBR_BASE = params.get("webr") || "https://webr.r-wasm.org/latest/";
+const DATA_URL = params.get("dataurl") || "https://raw.githubusercontent.com/Erknud/Metodekurs/main/mu26_befolkning.rds";
+const LOAD_DATA = false;   // startversjonen: ingen data eller pakker lastes inn
+const PKGS = [];
+
+const START = `# Mitt første R-skript
+
+# Antall ord i seks nyhetsartikler
+antallord <- c(340, 1329, 72, 259, 698, 567)
+
+# Hvor lang er en artikkel i gjennomsnitt?
+mean(antallord)
+
+# Lag et enkelt stolpediagram
+barplot(antallord)
+`;
+const START_DATA = `# Datasettet fra Medieundersøkelsen er lastet inn som d
+
+# Vis de første radene
+head(d)
+
+# Gjennomsnittlig tillit til nyhetsmediene
+mean(d$tillit_nyheter)
+`;
+
+const START_FULL = `# Datasettet d og pakkene er lastet inn
+
+# Regresjon
+modell <- lm(ki_konsekvenser ~ ki_bruk, data = d)
+model_parameters(modell)
+
+# Figur (hele koden kjøres når markøren står på første linje)
+ggplot(d, aes(x = ki_bruk, y = ki_konsekvenser)) +
+  geom_smooth(method = "lm")
+`;
+
+const $ = id => document.getElementById(id);
+const code = $("code"), out = $("console"), statusEl = $("status"), runBtn = $("run");
+const startText = (LOAD_DATA && PKGS.length) ? START_FULL : LOAD_DATA ? START_DATA : START;
+code.value = startText;
+
+function write(text, cls) {
+  const span = document.createElement("span");
+  if (cls) span.className = cls;
+  span.textContent = text.endsWith("\n") ? text : text + "\n";
+  out.appendChild(span);
+  out.scrollTop = out.scrollHeight;
+}
+function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = "status" + (cls ? " " + cls : ""); }
+
+let webR, shelter, busy = false, graphicsOK = true;
+const plots = [];
+function showPlot(i) {
+  if (!plots.length) return;
+  i = Math.max(0, Math.min(plots.length - 1, i));
+  const p = $("plots"); p.innerHTML = ""; p.appendChild(plots[i]); p.dataset.i = i;
+  const nav = plots.length > 1;
+  ["pprev", "pnext", "pcount"].forEach(id => $(id).style.display = nav ? "" : "none");
+  $("pcount").textContent = `${i + 1} av ${plots.length}`;
+  $("pprev").disabled = i === 0; $("pnext").disabled = i === plots.length - 1;
+}
+
+const HELPER = `
+.run_code <- function(code) {
+  exprs <- tryCatch(parse(text = code, keep.source = TRUE), error = function(e) e)
+  if (inherits(exprs, "error")) {
+    cat(paste0("> ", strsplit(code, "\\n")[[1]]), sep = "\\n")
+    message("Error: ", sub("^<text>:", "linje ", conditionMessage(exprs)))
+    return(invisible())
+  }
+  srcs <- attr(exprs, "srcref")
+  for (i in seq_along(exprs)) {
+    src <- as.character(srcs[[i]])
+    cat(paste0(c("> ", rep("+ ", length(src) - 1)), src), sep = "\\n")
+    ok <- withCallingHandlers(
+      tryCatch({
+        res <- withVisible(eval(exprs[[i]], envir = globalenv()))
+        if (res$visible) print(res$value)
+        TRUE
+      }, error = function(e) { message("Error: ", conditionMessage(e)); FALSE }),
+      warning = function(w) { message("Warning message:\\n", conditionMessage(w)); invokeRestart("muffleWarning") })
+    if (!ok) break
+  }
+  invisible()
+}
+.env_summary <- function() {
+  nms <- ls(globalenv())
+  if (length(nms) == 0) return(character(0))
+  vapply(nms, function(n) {
+    x <- get(n, envir = globalenv())
+    if (is.data.frame(x)) return(paste0(nrow(x), " obs. of ", ncol(x), " variables"))
+    s <- utils::capture.output(utils::str(x, give.attr = FALSE, vec.len = 2))[1]
+    trimws(s)
+  }, character(1))
+}`;
+
+async function refreshEnv() {
+  const res = await webR.evalR(".env_summary()");
+  const js = await res.toJs();
+  const names = js.names || [], vals = js.values || [];
+  const env = $("env");
+  if (!vals.length) { env.innerHTML = '<div class="empty">Environment is empty</div>'; return; }
+  const table = document.createElement("table");
+  vals.forEach((v, i) => {
+    const tr = table.insertRow();
+    tr.insertCell().textContent = names[i];
+    tr.insertCell().textContent = v;
+  });
+  env.innerHTML = ""; env.appendChild(table);
+}
+
+async function runCode(src) {
+  if (busy || !webR || !src.trim()) return;
+  busy = true; runBtn.disabled = true;
+  try {
+    const opts = { env: { code: src }, captureStreams: true, captureConditions: false };
+    let result;
+    if (graphicsOK) {
+      try {
+        result = await shelter.captureR(".run_code(code)", { ...opts, captureGraphics: { width: 560, height: 400 } });
+      } catch (e) {
+        // Noen nettlesere (bl.a. eldre Safari) støtter ikke figurer i webR. Kjør da uten figurer.
+        graphicsOK = false;
+        $("plots").innerHTML = '<div class="empty">Figurer kan ikke vises i denne nettleseren. Prøv Chrome, Edge eller Firefox for å se figurer.</div>';
+        console.warn("Grafikk feilet, kjører uten figurer:", e);
+      }
+    }
+    if (!result) result = await shelter.captureR(".run_code(code)", opts);
+    for (const o of result.output) {
+      if (o.type === "stdout") write(o.data, /^[>+] /.test(o.data) ? "in" : null);
+      else write(o.data, /^(Error|Feil)/.test(o.data) ? "err" : "msg");
+    }
+    if (result.images && result.images.length) {
+      // ta vare på alle figurene, slik som Plots-vinduet i RStudio
+      for (const img of result.images) {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width; canvas.height = img.height;
+        canvas.getContext("2d").drawImage(img, 0, 0);
+        plots.push(canvas);
+      }
+      if (plots.length > 30) plots.splice(0, plots.length - 30);
+      showPlot(plots.length - 1);
+    }
+    await shelter.purge();
+    await refreshEnv();
+  } catch (e) {
+    write("Error: " + e.message, "err");
+  } finally {
+    busy = false; runBtn.disabled = false;
+  }
+}
+
+function continues(line) {
+  // linjen fortsetter på neste linje hvis den slutter med en operator eller komma
+  const t = line.replace(/#.*$/, "").trim();
+  return /(\+|-|\*|\/|,|\(|\||&|=|<-|%>%|\|>)$/.test(t);
+}
+function depth(str) {
+  let d = 0, q = null;
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    if (q) { if (c === "\\") i++; else if (c === q) q = null; continue; }
+    if (c === '"' || c === "'") q = c;
+    else if (c === "#") { const nl = str.indexOf("\n", i); if (nl === -1) break; i = nl; }
+    else if ("([{".includes(c)) d++;
+    else if (")]}".includes(c)) d--;
+  }
+  return d;
+}
+function runCurrent() {
+  const text = code.value;
+  let start = code.selectionStart, end = code.selectionEnd, src;
+  if (start !== end) {
+    src = text.slice(start, end);
+  } else {
+    const ls = text.lastIndexOf("\n", start - 1) + 1;
+    let le = text.indexOf("\n", start); if (le === -1) le = text.length;
+    // utvid til hele uttrykket hvis det går over flere linjer (slik som i RStudio)
+    while (le < text.length) {
+      const chunk = text.slice(ls, le);
+      const lastLine = chunk.slice(chunk.lastIndexOf("\n") + 1);
+      if (depth(chunk) > 0 || continues(lastLine)) {
+        let ne = text.indexOf("\n", le + 1); if (ne === -1) ne = text.length;
+        le = ne;
+      } else break;
+    }
+    src = text.slice(ls, le);
+    // flytt markøren til neste linje som ikke er tom
+    let next = le + 1;
+    while (next < text.length) {
+      let ne = text.indexOf("\n", next); if (ne === -1) ne = text.length;
+      if (text.slice(next, ne).trim() !== "") break;
+      next = ne + 1;
+    }
+    const pos = Math.min(next, text.length);
+    code.setSelectionRange(pos, pos);
+  }
+  const trimmed = src.trim();
+  if (trimmed === "") return;
+  if (trimmed.split("\n").every(l => l.trim() === "" || l.trim().startsWith("#"))) {
+    write("> " + trimmed.replace(/\n/g, "\n> "), "in");
+    return;
+  }
+  runCode(src);
+}
+
+runBtn.addEventListener("click", () => { runCurrent(); code.focus(); });
+code.addEventListener("keydown", e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); runCurrent(); }
+  if (e.key === "Tab") { e.preventDefault(); const s = code.selectionStart; code.setRangeText("  ", s, code.selectionEnd, "end"); }
+});
+$("clear").addEventListener("click", () => { out.textContent = ""; });
+$("pprev").addEventListener("click", () => showPlot(+$("plots").dataset.i - 1));
+$("pnext").addEventListener("click", () => showPlot(+$("plots").dataset.i + 1));
+$("reset").addEventListener("click", () => { code.value = startText; code.focus(); code.setSelectionRange(0, 0); });
+
+(async () => {
+  try {
+    const { WebR } = await import(WEBR_BASE + "webr.mjs");
+    webR = new WebR({ baseUrl: WEBR_BASE });
+    await webR.init();
+    shelter = await new webR.Shelter();
+    await webR.evalRVoid(HELPER);
+    // gjør at install.packages() og library() fungerer som i vanlig R
+    try { await webR.evalRVoid("webr::shim_install()"); } catch (e) { console.warn(e); }
+    if (PKGS.length) {
+      setStatus("Installerer pakkene " + PKGS.join(", ") + " … Dette kan ta opptil et minutt første gang.");
+      await webR.installPackages(PKGS, { quiet: true });
+      for (const p of PKGS) await webR.evalRVoid(`suppressPackageStartupMessages(library(${p}))`);
+    }
+    if (LOAD_DATA) {
+      setStatus("Laster inn datasettet …");
+      const buf = new Uint8Array(await (await fetch(DATA_URL)).arrayBuffer());
+      await webR.FS.writeFile("/home/web_user/mu26.rds", buf);
+      await webR.evalRVoid('d <- readRDS("/home/web_user/mu26.rds")');
+      await refreshEnv();
+    }
+    setStatus("R er klar. Sett markøren på en linje i Script og trykk Run.", "ready");
+    runBtn.disabled = false;
+    code.focus(); code.setSelectionRange(0, 0);
+  } catch (e) {
+    setStatus("Klarte ikke å laste inn R: " + e.message + ". Prøv å laste siden på nytt.", "error");
+  }
+})();
+</script>
+</body>
+</html>
