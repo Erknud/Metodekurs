@@ -3,7 +3,7 @@
 Denne filen brukes i gruppeoppgaven (Del 2) i MEVI125. Den inneholder to utvalg som har svart på de samme spørsmålene:
 
 - **Befolkningen:** et utvalg av den norske befolkningen fra Medieundersøkelsen 2026 (Nordiske Mediedager), n = 1061. Respondentene har fått nye, tilfeldige id-er og kan ikke kobles til originaldataene.
-- **MEVI125:** MEVI125-studentene, som svarte på de samme spørsmålene på Lab 1 Spørreundersøkelser 27.10.2026. Undersøkelsen er anonym.
+- **MEVI125:** MEVI125-studentene, som svarte på de samme spørsmålene på Lab 1 Spørreundersøkelser 27.10.2026, n = 70. Undersøkelsen er anonym.
 
 Fram til 28.10.2026 inneholder filen bare befolkningsutvalget. Da legges svarene fra MEVI125-studentene til i den samme filen.
 
@@ -13,16 +13,16 @@ Les inn filen i R:
 d <- readRDS(url("https://raw.githubusercontent.com/Erknud/Metodekurs/main/mu26_mevi125.rds"))
 ```
 
-«Vet ikke» og «Ønsker ikke å svare» er satt som manglende verdi (`NA`).
+«Vet ikke» og «Ønsker ikke å svare» er satt som manglende verdi (`NA`). I MEVI125-utvalget er også noen få verdier satt som `NA` av hensyn til anonymiteten.
 
 ## Bakgrunn og utvalg
 
 | Variabel | Spørsmål / beskrivelse | Verdier |
 |---|---|---|
-| `id` | Respondent-id | 1–1061 (befolkningen), fra 1062 (MEVI125) |
+| `id` | Respondent-id | 1–1061 (befolkningen), 1062–1131 (MEVI125) |
 | `utvalg` | Hvilket utvalg personen tilhører | Befolkningen, MEVI125 |
 | `aldersgruppe` | Alder i grupper | 18-24, 25-34, 35-44, 45-54, 55-64, 65+ |
-| `kjonn` | Kjønn | Mann, Kvinne (i MEVI125-undersøkelsen er «Annet» og «Ønsker ikke å svare» satt som `NA`) |
+| `kjonn` | Kjønn | Mann, Kvinne |
 
 ## Bruk av KI
 
