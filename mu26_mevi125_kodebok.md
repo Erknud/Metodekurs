@@ -15,15 +15,42 @@ d <- readRDS(url("https://raw.githubusercontent.com/Erknud/Metodekurs/main/mu26_
 
 «Vet ikke» og «Ønsker ikke å svare» er satt som manglende verdi (`NA`).
 
-## Variabler
+## Bakgrunn og utvalg
 
 | Variabel | Spørsmål / beskrivelse | Verdier |
 |---|---|---|
 | `id` | Respondent-id | 1–1061 (befolkningen), fra 1062 (MEVI125) |
 | `utvalg` | Hvilket utvalg personen tilhører | Befolkningen, MEVI125 |
 | `aldersgruppe` | Alder i grupper | 18-24, 25-34, 35-44, 45-54, 55-64, 65+ |
-| `bruker_chatgpt` | Bruker du ChatGPT regelmessig? | 0 = Nei, 1 = Ja |
-| `ki_bruk` | Bruker du noen KI-verktøy i dag? Hvis ja, hvor ofte? | 0 = Aldri, 1 = Sjeldnere enn månedlig, 2 = Noen ganger i måneden, 3 = Ukentlig, 4 = Daglig, 5 = Flere ganger daglig |
+| `kjonn` | Kjønn | Mann, Kvinne (i MEVI125-undersøkelsen er «Annet» og «Ønsker ikke å svare» satt som `NA`) |
+
+## Bruk av KI
+
+| Variabel | Spørsmål / beskrivelse | Verdier |
+|---|---|---|
+| `ki_bruk` | Bruker du noen KI-verktøy i dag? Hvis ja, hvor ofte? | 0 = Nei, aldri, 1 = Ja, men sjeldnere, 2 = Ja, noen ganger i måneden, 3 = Ja, ukentlig, 4 = Ja, daglig, 5 = Ja, flere ganger daglig |
+
+Spørsmålet «Hvilke av følgende KI-verktøy bruker du regelmessig?» ble bare stilt til dem som bruker KI (`ki_bruk` større enn 0). Hvert verktøy har sin egen variabel:
+
+| Variabel | Verktøy |
+|---|---|
+| `bruker_chatgpt` | ChatGPT |
+| `bruker_gemini` | Gemini |
+| `bruker_copilot` | Copilot |
+| `bruker_claude` | Claude |
+| `bruker_perplexity` | Perplexity |
+| `bruker_grok` | Grok (på X) |
+| `bruker_snapchat` | Snapchat My AI |
+| `bruker_chaton` | Chat On |
+| `bruker_mistral` | LeChat / Mistral |
+| `bruker_andre` | Andre verktøy |
+
+Verdier for alle verktøyvariablene: 1 = Ja (krysset av for verktøyet), 0 = Nei (krysset ikke av, eller bruker ikke KI). Andelen gjelder altså alle i utvalget, også dem som ikke bruker KI. Vil du se andelen blant dem som bruker KI, kan du filtrere på `ki_bruk > 0`.
+
+## Tillit og syn på KI
+
+| Variabel | Spørsmål | Verdier |
+|---|---|---|
 | `tillit_nyheter` | I hvilken grad har du tiltro til nyhetsmediene generelt? | 1 = Ingen tiltro, 2 = Mindre tiltro, 3 = Noe tiltro, 4 = Stor tiltro |
 | `tillit_ki_redaksjoner` | I hvilken grad har du tillit til at norske redaksjoner som bruker KI i nyhetsformidling sikrer at informasjonen som publiseres er korrekt? | 1 = Ikke i det hele tatt, 2 = I ganske liten grad, 3 = I noen grad, 4 = I ganske stor grad, 5 = I svært stor grad |
-| `ki_konsekvenser` | Alt i alt, tror du utviklingen av KI vil ha positive eller negative konsekvenser for samfunnet de neste fem årene? | 1 = Svært negative, 2 = Ganske negative, 3 = Verken eller, 4 = Ganske positive, 5 = Svært positive |
+| `ki_konsekvenser` | Alt i alt, tror du utviklingen av kunstig intelligens vil hovedsakelig ha positive eller negative konsekvenser for samfunnet de neste fem årene? | 1 = Svært negative, 2 = Ganske negative, 3 = Verken eller, 4 = Ganske positive, 5 = Svært positive |
